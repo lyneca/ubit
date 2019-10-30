@@ -1,0 +1,40 @@
+#!/bin/bash
+
+if [ ! -d /run/media/$USER/MICROBIT ]; then
+    echo "No microbit found"
+    exit
+fi
+
+user_home=$(echo "$HOME" | sed "s#/#\\\\/#g")
+files=$(cat .ubit | grep "^use " | cut -d " " -f 2 | sed "s/$/.py/g")
+main=$(cat .ubit | grep "^main " | cut -d " " -f 2 | head -n 1)
+
+files_path=$(echo "$files" | sed "s/^/$user_home\/mu_code\/libraries\//g")
+
+files_list=$(echo "$files
+main.py")
+
+echo "Flashing..."
+
+ufs put $main main.py
+
+echo "Waiting for board..."
+while [ ! -d /run/media/lyneca/MICROBIT ]; do
+    sleep 0.01
+done
+
+echo "Adding libraries..."
+
+for f in $files_path; do
+    ufs put $f
+done
+
+echo "Removing unneeded files..."
+
+for f in $(ufs ls); do
+    echo "$files_list" | grep -q "^$f$"
+    if [ $? -eq 1 ]; then
+        echo " - rm $f"
+        ufs rm $f
+    fi
+done
